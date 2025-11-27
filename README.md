@@ -39,6 +39,7 @@ LUNA-BADGE 是一个前端应用，由Gemini 3 Pro模型驱动，用来快速生
 
 ## 在线访问
 - Vercel：https://traeluna-badge1lt5.vercel.app
+- Github Pages：https://lun3cy.github.io/LUNA-Badge/
 
 ## 技术栈
 - `React` + `Vite`
