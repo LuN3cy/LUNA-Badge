@@ -37,7 +37,7 @@ LUNA-BADGE 是一个前端应用，由Gemini 3 Pro模型驱动，用来快速生
 - 当网络不可用或未配置 Key 时，自动使用离线生成逻辑
 - 离线生成的数据结构与在线版本保持一致，保障界面行为稳定
 
-## 部署
+## 在线访问
 - Vercel：https://traeluna-badge1lt5.vercel.app
 
 ## 技术栈
