@@ -178,8 +178,7 @@ const App = () => {
   const handleExportPng = async () => {
     if (exportPosterRef.current) {
         try {
-            // Removing cacheBust to rely on standard browser caching and CORS headers
-            const dataUrl = await toPng(exportPosterRef.current);
+            const dataUrl = await toPng(exportPosterRef.current, { pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
             download(dataUrl, `luna-badge-${data.name.replace(/\s+/g, '-').toLowerCase()}.png`);
         } catch (err) {
             console.error('PNG export failed', err);
@@ -191,7 +190,7 @@ const App = () => {
     if (exportPosterRef.current) {
         setCopyStatus('copying');
         try {
-            const dataUrl = await toPng(exportPosterRef.current);
+            const dataUrl = await toPng(exportPosterRef.current, { pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
             const response = await fetch(dataUrl);
             const blob = await response.blob();
             await navigator.clipboard.write([
@@ -547,9 +546,8 @@ const App = () => {
           {/* PNG Export: The "Poster" View (3:4 Ratio, Light Gradient Background) */}
           <div ref={exportPosterRef} className="w-[1200px] h-[1600px] bg-gray-50 relative overflow-hidden flex items-center justify-center">
              {/* Diffused Background */}
-             <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-200"></div>
-             <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-200/40 rounded-full blur-[120px]"></div>
-             <div className="absolute bottom-[-20%] left-[10%] w-[900px] h-[900px] bg-blue-200/30 rounded-full blur-[150px]"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-200"></div>
+            <div className="absolute bottom-[-20%] left-[10%] w-[900px] h-[900px] bg-blue-200/30 rounded-full blur-[150px]"></div>
              
              {/* Centered Badge - Scaled Up for Quality */}
              <div className="scale-[2] transform-gpu shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] rounded-xl">
