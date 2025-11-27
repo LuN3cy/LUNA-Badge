@@ -64,6 +64,7 @@ const BADGE_TRANSLATIONS = {
 
 const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language, uniqueId: string }) => {
   const t = BADGE_TRANSLATIONS.industrial;
+  const exportMode = uniqueId.includes('export');
   return (
     <div className="relative w-full h-full bg-[#0a0a0a] text-gray-200 font-mono flex flex-col justify-between p-8">
         <NoiseTexture id={`noise-${uniqueId}`} />
@@ -75,7 +76,7 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
           </div>
           <div className="flex-1 min-h-0">
           <div className="space-y-2 mb-4">
-            <h2 className={`${getAdaptiveSize(data.role, 'text-4xl', 'text-2xl', 'text-xl', 10, 20)} font-bold tracking-[0.2em] text-gray-100 uppercase drop-shadow-md break-words line-clamp-2`}>{data.role}</h2>
+            <h2 className={`${getAdaptiveSize(data.role, 'text-4xl', 'text-2xl', 'text-xl', 10, 20)} font-bold ${exportMode ? 'tracking-wide' : 'tracking-[0.2em]'} text-gray-100 uppercase drop-shadow-md break-words line-clamp-2`}>{data.role}</h2>
             <div className="w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent my-4"></div>
           </div>
   
@@ -96,7 +97,7 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
             <span className="text-[11px] text-gray-500 block mb-1">
               {data.customFields['industrial_identifier'] || t.identifier[lang]}
             </span>
-            <h1 className={`${getAdaptiveSize(data.name, 'text-4xl', 'text-3xl', 'text-2xl', 6, 12)} font-mono text-white tracking-widest uppercase break-words line-clamp-2`}>{data.name}</h1>
+            <h1 className={`${getAdaptiveSize(data.name, 'text-4xl', 'text-3xl', 'text-2xl', 6, 12)} font-mono text-white ${exportMode ? 'tracking-wide' : 'tracking-widest'} uppercase break-words line-clamp-2`}>{data.name}</h1>
           </div>
           </div>
   
@@ -516,8 +517,9 @@ export const Badge: React.FC<BadgeProps> = ({ data, theme, language, uniqueId = 
 
       {renderBadgeContent()}
       
-      {/* Shared Glass Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-40 rounded-xl mix-blend-overlay"></div>
+      {!isExport && (
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-40 rounded-xl mix-blend-overlay"></div>
+      )}
     </div>
   );
 };
