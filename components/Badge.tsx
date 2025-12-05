@@ -60,6 +60,67 @@ const BADGE_TRANSLATIONS = {
   },
 };
 
+// Helper to generate logo style string
+const getLogoStyle = (settings: BadgeData['logoSettings'], extraScale: number = 1) => {
+    return {
+        filter: `
+            opacity(${settings.opacity}%) 
+            contrast(${settings.contrast}%) 
+            brightness(${settings.brightness}%)
+            ${settings.grayscale ? 'grayscale(100%)' : ''}
+            ${settings.invert ? 'invert(100%)' : ''}
+            ${settings.sepia ? 'sepia(100%)' : ''}
+        `,
+        transform: `scale(${(settings.scale / 100) * extraScale})`
+    };
+};
+
+// Helper component to render Logo with optional overlay
+export const LogoRenderer = ({ src, className, settings, extraScale = 1, style = {} }: { 
+    src: string, 
+    className?: string, 
+    settings: BadgeData['logoSettings'], 
+    extraScale?: number,
+    style?: React.CSSProperties 
+}) => {
+    const baseStyle = getLogoStyle(settings, extraScale);
+    
+    return (
+        <div className="relative inline-block" style={{ transform: baseStyle.transform }}>
+            <img 
+                src={src} 
+                alt="Logo" 
+                className={className}
+                style={{
+                    ...style,
+                    filter: baseStyle.filter,
+                    transform: 'none' // Transform applied to wrapper
+                }}
+            />
+            {settings.overlayEnabled && (
+                <div 
+                    className={`absolute inset-0 pointer-events-none ${className}`} // Clone class names for shape/size
+                    style={{
+                        backgroundColor: settings.overlayColor,
+                        // mixBlendMode: 'color', // Removed to ensure color visibility on all backgrounds
+                        maskImage: `url(${src})`,
+                        WebkitMaskImage: `url(${src})`,
+                        maskSize: 'contain',
+                        WebkitMaskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        WebkitMaskRepeat: 'no-repeat',
+                        maskPosition: 'center',
+                        WebkitMaskPosition: 'center',
+                        ...style, // Clone style
+                        transform: 'none',
+                        filter: 'none' // No filter on overlay
+                    }}
+                ></div>
+            )}
+        </div>
+    );
+};
+
 // --- SUB-COMPONENTS FOR EACH STYLE ---
 
 const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language, uniqueId: string }) => {
@@ -71,8 +132,14 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/60 pointer-events-none z-20 mix-blend-overlay"></div>
         
         <div className="relative z-10 flex flex-col h-full">
-          <div className="mt-8 mb-6">
-            {/* Logo Removed */}
+          <div className="mt-8 mb-6 flex justify-between items-start min-h-[48px]">
+            {data.logo && (
+                <LogoRenderer
+                    src={data.logo}
+                    settings={data.logoSettings}
+                    className="max-h-16 max-w-[140px] object-contain origin-top-left"
+                />
+            )}
           </div>
           <div className="flex-1 min-h-0">
           <div className="space-y-2 mb-4">
@@ -133,11 +200,22 @@ const ModernBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
        </div>
        
        <div className="relative z-10 flex flex-col h-full p-8 pt-12">
-          <div className="flex justify-between items-start border-b border-white/20 pb-4 mb-8">
-             <span className="text-xs tracking-widest uppercase opacity-70">
-                {data.customFields['modern_top_left'] || t.identityPass[lang]}
-             </span>
-             <span className="text-xs tracking-widest uppercase opacity-70">
+          <div className="flex justify-between items-start border-b border-white/20 pb-4 mb-8 min-h-[60px]">
+             <div className="flex flex-col gap-1 max-w-[60%]">
+                <span className="text-xs tracking-widest uppercase opacity-70">
+                    {data.customFields['modern_top_left'] || t.identityPass[lang]}
+                </span>
+                {data.logo && (
+                    <div className="mt-2">
+                        <LogoRenderer
+                            src={data.logo}
+                            settings={data.logoSettings}
+                            className="h-10 w-auto object-contain origin-top-left"
+                        />
+                    </div>
+                )}
+             </div>
+             <span className="text-xs tracking-widest uppercase opacity-70 text-right">
                 {data.customFields['modern_top_right'] || t.permanentCard[lang]}
              </span>
           </div>
@@ -188,15 +266,38 @@ const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language,
        </div>
   
        <div className="absolute top-6 left-6 w-3 h-3 bg-white"></div>
-       <div className="absolute top-6 right-6 font-mono text-sm font-bold tracking-widest opacity-80">
-          #{data.id}
+       
+       {/* Top Center Logo Area for Swiss */}
+       <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center w-full px-12">
+          {data.logo && (
+              <div className="mb-2">
+                  <LogoRenderer
+                    src={data.logo}
+                    settings={data.logoSettings}
+                    extraScale={1.2}
+                    className="h-12 w-auto object-contain mix-blend-screen"
+                    style={{
+                        // Force White logic overrides user settings slightly, but we still apply them underneath if desired.
+                        // For Swiss, we want to FORCE white usually. But if user wants color overlay, maybe we should respect it?
+                        // The prompt said "Force white" previously. If user enables overlay, we should probably respect that overlay color instead of white.
+                        // But 'mix-blend-screen' on blue bg works best with white/light colors.
+                        // Let's assume overlay overrides the "Force White" logic if enabled.
+                        filter: data.logoSettings.overlayEnabled ? undefined : `${getLogoStyle(data.logoSettings).filter} brightness(0) invert(1)`
+                    }}
+                  />
+              </div>
+          )}
+       </div>
+
+       <div className="absolute top-6 right-6 font-mono text-sm font-bold tracking-widest opacity-80 flex items-center gap-2">
+          <span>#{data.id}</span>
        </div>
        
        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-white/20 rounded-full"></div>
   
-       <div className="w-full h-full flex flex-col items-center justify-between pt-12 text-center relative z-10">
+       <div className="w-full h-full flex flex-col items-center justify-between pt-24 text-center relative z-10">
           
-          <div className="space-y-1 mt-4">
+          <div className="space-y-1 mt-2">
              <h3 className="text-3xl font-bold tracking-tighter leading-none uppercase">
                {data.customFields['swiss_main'] || t.work[lang]}
              </h3>
@@ -206,7 +307,7 @@ const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language,
              <div className="w-4 h-0.5 bg-white mx-auto mt-4"></div>
           </div>
   
-          <div className="space-y-2">
+          <div className="space-y-2 mb-4">
              <h1 className={`${getAdaptiveSize(data.name, 'text-6xl', 'text-5xl', 'text-3xl', 4, 10)} font-black tracking-tighter leading-[0.85] uppercase break-words line-clamp-2`}>
                {data.name.split(' ').map((n,i) => <div key={i} className="inline-block mr-4">{n}</div>)}
              </h1>
@@ -214,7 +315,7 @@ const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language,
              <p className={`${getAdaptiveSize(data.role, 'text-2xl', 'text-xl', 'text-lg', 15, 25)} font-bold uppercase tracking-tight opacity-90 break-words line-clamp-2`}>{data.role}</p>
           </div>
   
-          <div className="w-full space-y-6 mt-4">
+          <div className="w-full space-y-6 mt-auto">
                <div className="flex justify-between px-4 text-left">
                   <div className="w-1/2 pr-2">
                      <p className="text-[11px] font-bold uppercase opacity-60 mb-0.5">{t.contact[lang]}</p>
@@ -252,8 +353,18 @@ const CreativeBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
         </div>
         
         <div className="relative z-10 flex flex-col h-full">
+           {data.logo && (
+               <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center overflow-hidden border border-white/20 shadow-sm transition-all">
+                   <LogoRenderer
+                        src={data.logo}
+                        settings={data.logoSettings}
+                        extraScale={1.1}
+                        className="w-full h-full object-contain p-2"
+                   />
+               </div>
+           )}
            
-           <div className="mt-12 mb-8">
+           <div className="mt-12 mb-8 max-w-[85%]">
               <h1 className={`${getAdaptiveSize(data.name, 'text-[4rem]', 'text-5xl', 'text-4xl', 6, 12)} font-semibold tracking-tight leading-[0.9] text-gray-900 break-words line-clamp-2`}>
             {data.name.split(' ').map((n,i) => <span key={i} className="inline-block mr-3">{n}</span>)}
           </h1>
@@ -316,14 +427,24 @@ const FormalRedBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => 
            <div className="absolute top-6 right-6 z-30 text-white/90 border-2 border-white/50 rounded-full p-1.5 backdrop-blur-sm">
               <Award className="w-5 h-5 text-white" />
            </div>
+           
+           {/* Top Left Logo Removed per request */}
        </div>
   
        <div className="relative z-10 flex flex-col h-full mt-[32%] px-8 pt-8 pb-6 bg-[#fcfcfc]">
           
           <div className="mb-6 border-b border-gray-200 pb-4">
              <div className="flex items-center gap-3 mb-2">
-                 <div className="w-10 h-10 bg-gradient-to-br from-[#b93632] to-[#922b27] rounded shadow-md flex items-center justify-center text-white font-serif font-bold text-xl">
-                    {data.company.charAt(0)}
+                 <div className="w-12 h-12 bg-gradient-to-br from-[#b93632] to-[#922b27] rounded shadow-md flex items-center justify-center text-white font-serif font-bold text-xl overflow-hidden shrink-0">
+                    {data.logo ? (
+                        <LogoRenderer
+                            src={data.logo}
+                            settings={data.logoSettings}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        data.company.charAt(0)
+                    )}
                  </div>
                  <div className="flex flex-col">
                     <h3 className="text-base font-bold text-gray-800 tracking-wide uppercase leading-tight max-w-[180px] line-clamp-2">{data.company}</h3>
@@ -374,13 +495,21 @@ const MinimalismBadge = ({ data, lang }: { data: BadgeData, lang: Language }) =>
   return (
     <div className="relative w-full h-full bg-white text-black font-sans flex flex-col p-8 pt-6 overflow-hidden">
        
-       <div className="flex justify-between items-start mt-4 mb-auto z-20">
+       <div className="flex justify-between items-start mt-4 mb-auto z-20 min-h-[48px]">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500 pt-1">
             {data.customFields['minimal_corporate'] || t.corporate[lang]}
           </p>
           
           <div className="bg-white p-1">
-               <QRCodeSVG value={data.qrValue} size={48} fgColor="#000" bgColor="transparent" />
+               {data.logo ? (
+                   <LogoRenderer
+                        src={data.logo}
+                        settings={data.logoSettings}
+                        className="h-10 w-auto object-contain origin-top-right"
+                   />
+               ) : (
+                   <div className="w-4 h-4 bg-black/10"></div>
+               )}
           </div>
        </div>
   
@@ -470,56 +599,27 @@ export const BadgePreview = ({ theme, isActive }: { theme: BadgeTheme; isActive:
          <div className="w-full h-full bg-white flex flex-col p-3 relative border border-gray-200">
              <div className="flex justify-between items-start mb-auto">
                  <div className="text-[6px] uppercase font-mono text-gray-500">CORP ©</div>
-                 <div className="w-4 h-4 bg-black/10"></div>
+                 <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
              </div>
-             <div className="mt-auto mb-2">
-                 <div className="w-8 h-1.5 bg-gray-100 rounded-full mb-1"></div>
-                 <div className="h-3 w-3/4 bg-black rounded-sm mb-0.5"></div>
-                 <div className="h-3 w-1/2 bg-black rounded-sm"></div>
+             <div className="mt-auto">
+                 <div className="h-4 w-3/4 bg-black rounded-sm mb-1"></div>
+                 <div className="h-1.5 w-1/2 bg-gray-400 rounded-sm"></div>
              </div>
-             <div className="w-full h-px bg-gray-100 mt-1"></div>
          </div>
        )}
     </div>
   );
-}
+};
 
-
-// --- MAIN BADGE COMPONENT ---
-
-export const Badge: React.FC<BadgeProps> = ({ data, theme, language, uniqueId = 'main' }) => {
-  
-  const renderBadgeContent = () => {
-    switch(theme) {
-      case 'modern': return <ModernBadge data={data} lang={language} />;
-      case 'swiss': return <SwissBadge data={data} lang={language} uniqueId={uniqueId} />;
-      case 'creative': return <CreativeBadge data={data} lang={language} />;
-      case 'formal-red': return <FormalRedBadge data={data} lang={language} />;
-      case 'minimalism': return <MinimalismBadge data={data} lang={language} />;
-      case 'industrial':
-      default: return <IndustrialBadge data={data} lang={language} uniqueId={uniqueId} />;
-    }
-  };
-
-  const isLightTheme = ['creative', 'formal-red', 'minimalism'].includes(theme);
-  const isExport = uniqueId.includes('export');
-  
-  // Use transparent/none border for light themes or exports to avoid black stroke artifact
-  const containerStyle = (isLightTheme || isExport)
-    ? "bg-white border-none" 
-    : "bg-black border-white/5";
-
-  return (
-    <div className={`relative w-[340px] h-[580px] rounded-xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden transform-gpu border ${containerStyle}`}>
-      {/* Shared physical slot hole - aligned with lanyard */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 w-16 h-2 rounded-full bg-[#111] shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)] z-50 border border-white/10 flex items-center justify-center">
-      </div>
-
-      {renderBadgeContent()}
-      
-      {!isExport && (
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-40 rounded-xl mix-blend-overlay"></div>
-      )}
-    </div>
-  );
+export const Badge = (props: BadgeProps) => {
+  const { theme } = props;
+  switch (theme) {
+    case 'industrial': return <IndustrialBadge {...props} uniqueId={props.uniqueId || 'industrial'} />;
+    case 'modern': return <ModernBadge {...props} />;
+    case 'swiss': return <SwissBadge {...props} uniqueId={props.uniqueId || 'swiss'} />;
+    case 'creative': return <CreativeBadge {...props} />;
+    case 'formal-red': return <FormalRedBadge {...props} />;
+    case 'minimalism': return <MinimalismBadge {...props} />;
+    default: return <IndustrialBadge {...props} uniqueId={props.uniqueId || 'default'} />;
+  }
 };
