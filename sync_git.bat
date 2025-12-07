@@ -39,6 +39,8 @@ git config http.postBuffer 524288000
 git config http.lowSpeedLimit 0
 git config http.lowSpeedTime 999999
 git config --global http.version HTTP/1.1
+:: Disable SSL verification for this repo to avoid proxy issues
+git config http.sslVerify false
 
 :push_retry
 git push origin main
@@ -53,6 +55,15 @@ if %errorlevel% neq 0 (
     echo.
     echo Tip: If you are using a VPN, make sure it's ON.
     echo If you are NOT using a VPN, you might need one to access GitHub.
+    echo.
+    echo Trying to set proxy settings automatically...
+    echo Setting proxy to 127.0.0.1:7890 (Common proxy port)
+    git config --global http.proxy http://127.0.0.1:7890
+    git config --global https.proxy http://127.0.0.1:7890
+    
+    set /p retry_proxy="Retry with proxy settings? (y/n): "
+    if /i "%retry_proxy%"=="y" goto push_retry
+    
     pause
     exit /b
 )
