@@ -35,7 +35,7 @@ export interface BadgeData {
   logoSettings: LogoSettings;
 }
 
-export type BadgeTheme = 'industrial' | 'modern' | 'swiss' | 'creative' | 'formal-red' | 'minimalism';
+export type BadgeTheme = 'industrial' | 'modern' | 'swiss' | 'creative' | 'formal-red' | 'minimalism' | 'matrix';
 
 export type Language = 'en' | 'zh';
 

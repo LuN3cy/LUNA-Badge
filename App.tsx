@@ -58,6 +58,7 @@ const UI_TRANSLATIONS = {
     creative: { en: 'Creative', zh: '创意' },
     'formal-red': { en: 'Formal Red', zh: '商务红' },
     minimalism: { en: 'Minimalism', zh: '极简' },
+    matrix: { en: 'The Matrix', zh: '黑客帝国' },
   },
 };
 
@@ -83,6 +84,9 @@ const THEME_CUSTOM_FIELDS: Record<BadgeTheme, { key: string; label: { en: string
   ],
   minimalism: [
     { key: 'minimal_corporate', label: { en: 'Top Label', zh: '顶部标签' } },
+  ],
+  matrix: [
+    { key: 'matrix_system', label: { en: 'System Label', zh: '系统标签' } },
   ],
 };
 
@@ -271,6 +275,7 @@ const App = () => {
     { id: 'creative', label: t.themes.creative[language] },
     { id: 'formal-red', label: t.themes['formal-red'][language] },
     { id: 'minimalism', label: t.themes.minimalism[language] },
+    { id: 'matrix', label: t.themes.matrix[language] },
   ];
 
   const currentThemeFields = THEME_CUSTOM_FIELDS[theme] || [];

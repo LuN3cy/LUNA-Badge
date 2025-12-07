@@ -58,6 +58,13 @@ const BADGE_TRANSLATIONS = {
     location: { en: 'Location', zh: '地址' },
     contact: { en: 'Contact', zh: '联系方式' },
   },
+  matrix: {
+    system: { en: 'SYSTEM FAILURE', zh: '系统错误' },
+    access: { en: 'ACCESS GRANTED', zh: '访问许可' },
+    trace: { en: 'TRACE PROGRAM', zh: '追踪程序' },
+    contact: { en: 'UPLINK', zh: '上行链路' },
+    address: { en: 'NODE LOCATION', zh: '节点位置' },
+  },
 };
 
 // Helper to generate logo style string
@@ -493,47 +500,138 @@ const FormalRedBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => 
 const MinimalismBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
   const t = BADGE_TRANSLATIONS.minimalism;
   return (
-    <div className="relative w-full h-full bg-white text-black font-sans flex flex-col p-8 pt-6 overflow-hidden">
-       
-       <div className="flex justify-between items-start mt-4 mb-auto z-20 min-h-[48px]">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500 pt-1">
-            {data.customFields['minimal_corporate'] || t.corporate[lang]}
-          </p>
-          
-          <div className="bg-white p-1">
-               {data.logo ? (
-                   <LogoRenderer
-                        src={data.logo}
-                        settings={data.logoSettings}
-                        className="h-10 w-auto object-contain origin-top-right"
-                   />
-               ) : (
-                   <div className="w-4 h-4 bg-black/10"></div>
-               )}
+    <div className="relative w-full h-full bg-white text-gray-900 font-sans flex flex-col p-8">
+       {/* Top Bar */}
+       <div className="flex justify-between items-start mb-8">
+          <div className="flex flex-col">
+             <span className="text-[10px] uppercase font-bold tracking-widest text-gray-400 mb-1">
+                 {data.customFields['minimal_corporate'] || t.corporate[lang]}
+             </span>
+             <div className="h-0.5 w-8 bg-gray-900"></div>
           </div>
-       </div>
-  
-       <div className="mb-16 z-10 relative">
-          <div className="inline-block bg-gray-100 rounded-full px-3 py-1 mb-6">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500">ID: {data.id}</p>
-          </div>
-          <h1 className={`${getAdaptiveSize(data.name, 'text-[4.5rem]', 'text-5xl', 'text-4xl', 6, 12)} font-bold tracking-tighter leading-[0.85] text-black mb-3 break-words line-clamp-2`}>
-              {data.name.split(' ').map((n, i) => <span key={i} className="inline-block mr-4">{n}</span>)}
-          </h1>
-          <p className={`${getAdaptiveSize(data.role, 'text-base', 'text-sm', 'text-xs', 25, 35)} font-medium uppercase tracking-[0.2em] text-gray-400 mt-2 break-words line-clamp-2`}>{data.role}</p>
+          {data.logo && (
+             <LogoRenderer
+                 src={data.logo}
+                 settings={data.logoSettings}
+                 className="h-8 w-auto object-contain"
+             />
+          )}
        </div>
 
-       <div className="w-full border-t-2 border-gray-100 pt-6 pb-2 relative z-10 bg-white">
-          <div className="flex justify-between items-end">
-              <div className="max-w-[50%]">
-                   <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t.location[lang]}</p>
-                   <p className="text-sm font-medium uppercase leading-tight text-gray-800 line-clamp-2">{data.address}</p>
-              </div>
-              <div className="text-right max-w-[50%]">
-                   <p className="text-[11px] font-bold uppercase tracking-wider text-[#ea580c] mb-1">{t.contact[lang]}</p>
-                   <p className="text-sm font-medium uppercase leading-tight text-gray-800 break-words line-clamp-2">{data.contact.split('\n')[0]}</p>
-              </div>
-          </div>
+       {/* Main Content */}
+       <div className="flex-grow flex flex-col justify-center mb-8">
+           <h1 className={`${getAdaptiveSize(data.name, 'text-4xl', 'text-3xl', 'text-2xl', 8, 14)} font-bold tracking-tight mb-2 uppercase break-words line-clamp-2`}>{data.name}</h1>
+           <p className={`${getAdaptiveSize(data.role, 'text-base', 'text-sm', 'text-xs', 15, 25)} font-medium text-gray-500 uppercase tracking-widest break-words line-clamp-2`}>{data.role}</p>
+       </div>
+
+       {/* Footer Grid */}
+       <div className="mt-auto grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+           <div className="space-y-4">
+               <div>
+                  <span className="block text-[10px] uppercase font-bold text-gray-400 mb-1">{t.location[lang]}</span>
+                  <p className="text-xs leading-relaxed whitespace-pre-line line-clamp-2">{data.address}</p>
+               </div>
+               <div>
+                  <span className="block text-[10px] uppercase font-bold text-gray-400 mb-1">{t.contact[lang]}</span>
+                  <p className="text-xs leading-relaxed whitespace-pre-line text-gray-600 line-clamp-2">{data.contact}</p>
+               </div>
+           </div>
+           
+           <div className="flex flex-col items-end justify-between h-full">
+               <div className="text-right">
+                   <span className="block text-[10px] uppercase font-bold text-gray-400 mb-0.5">ID</span>
+                   <span className="font-mono text-sm">{data.id}</span>
+               </div>
+               <div className="p-1 border border-gray-100 rounded">
+                   <QRCodeSVG value={data.qrValue} size={56} fgColor="#111" bgColor="transparent" />
+               </div>
+           </div>
+       </div>
+    </div>
+  );
+};
+
+const MatrixBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language, uniqueId: string }) => {
+  const t = BADGE_TRANSLATIONS.matrix;
+  
+  return (
+    <div className="relative w-full h-full bg-black text-[#00ff41] font-matrix overflow-hidden flex flex-col p-6">
+       {/* Digital Rain Background Effect (Simplified with CSS gradients/opacity) */}
+       <div className="absolute inset-0 pointer-events-none opacity-20">
+          <div className="w-full h-full" style={{ 
+              backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 255, 65, .3) 25%, rgba(0, 255, 65, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 65, .3) 75%, rgba(0, 255, 65, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 65, .3) 25%, rgba(0, 255, 65, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 65, .3) 75%, rgba(0, 255, 65, .3) 76%, transparent 77%, transparent)',
+              backgroundSize: '30px 30px'
+          }}></div>
+       </div>
+       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-50 bg-[length:100%_2px,3px_100%] pointer-events-none"></div>
+       
+       {/* Header */}
+       <div className="relative z-10 flex justify-between items-start border-b border-[#00ff41]/30 pb-4 mb-6">
+           <div className="flex flex-col">
+               <span className="text-xs tracking-widest animate-pulse">
+                   {data.customFields['matrix_system'] || t.system[lang]}
+               </span>
+               <span className="text-[10px] opacity-70 mt-1 font-mono">
+                   Connect: {data.company}
+               </span>
+           </div>
+           <div className="border border-[#00ff41] p-1 shadow-[0_0_10px_rgba(0,255,65,0.4)]">
+                {data.logo ? (
+                     <LogoRenderer
+                         src={data.logo}
+                         settings={data.logoSettings}
+                         className="h-10 w-10 object-contain grayscale contrast-150 brightness-110"
+                         style={{ 
+                             filter: 'drop-shadow(0 0 5px rgba(0,255,65,0.8)) grayscale(100%) sepia(100%) hue-rotate(90deg) saturate(300%) contrast(1.2)'
+                         }}
+                     />
+                ) : (
+                    <Aperture className="w-8 h-8 text-[#00ff41]" />
+                )}
+           </div>
+       </div>
+
+       {/* Main Content */}
+       <div className="relative z-10 flex-grow flex flex-col items-center justify-center text-center space-y-4 my-4">
+           <div className="border-l-2 border-r-2 border-[#00ff41]/50 px-6 py-2">
+               <h1 className={`${getAdaptiveSize(data.name, 'text-5xl', 'text-4xl', 'text-3xl', 8, 14)} font-bold tracking-widest drop-shadow-[0_0_8px_rgba(0,255,65,0.8)] uppercase break-words line-clamp-2`}>
+                   {data.name}
+               </h1>
+           </div>
+           <div className="flex items-center gap-2 text-[#00ff41] bg-[#00ff41]/10 px-3 py-1 rounded">
+               <span className="w-2 h-2 bg-[#00ff41] animate-ping rounded-full"></span>
+               <p className={`${getAdaptiveSize(data.role, 'text-xl', 'text-lg', 'text-base', 15, 25)} tracking-widest uppercase break-words line-clamp-2`}>{data.role}</p>
+           </div>
+       </div>
+
+       {/* Footer Data Block */}
+       <div className="relative z-10 mt-auto grid grid-cols-[1fr_auto] gap-4 pt-4 border-t border-[#00ff41]/30">
+           <div className="flex flex-col justify-between text-xs font-mono space-y-3">
+               <div>
+                    <span className="block opacity-60 mb-0.5">&gt; {t.address[lang]}</span>
+                    <span className="block uppercase whitespace-pre-line line-clamp-2">{data.address}</span>
+                </div>
+                <div>
+                    <span className="block opacity-60 mb-0.5">&gt; {t.contact[lang]}</span>
+                    <span className="block whitespace-pre-line line-clamp-2">{data.contact}</span>
+                </div>
+                <div>
+                    <span className="block opacity-60 mb-0.5">&gt; ID_KEY</span>
+                    <span className="block">{data.id}</span>
+                </div>
+           </div>
+           
+           <div className="flex flex-col items-end gap-2">
+               <div className="bg-black p-2 border border-[#00ff41] shadow-[0_0_15px_rgba(0,255,65,0.2)]">
+                   <QRCodeSVG value={data.qrValue} size={80} fgColor="#00ff41" bgColor="#000000" />
+               </div>
+               <span className="text-[10px] tracking-widest opacity-80 animate-pulse">{t.access[lang]}</span>
+           </div>
+       </div>
+
+       {/* Random Code Snippets Overlay */}
+       <div className="absolute top-1/2 left-4 text-[10px] opacity-20 font-mono pointer-events-none writing-vertical-rl hidden sm:block">
+           01001011 101001
        </div>
     </div>
   );
@@ -607,6 +705,19 @@ export const BadgePreview = ({ theme, isActive }: { theme: BadgeTheme; isActive:
              </div>
          </div>
        )}
+       {theme === 'matrix' && (
+         <div className="w-full h-full bg-black flex flex-col p-3 relative border border-[#00ff41]/30">
+             <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] opacity-40"></div>
+             <div className="flex justify-between items-start mb-auto relative z-10">
+                 <div className="text-[6px] uppercase font-mono text-[#00ff41]">SYS.32</div>
+                 <div className="w-1.5 h-1.5 bg-[#00ff41] animate-pulse"></div>
+             </div>
+             <div className="mt-auto relative z-10">
+                 <div className="h-4 w-3/4 bg-[#00ff41] rounded-none mb-1 shadow-[0_0_5px_rgba(0,255,65,0.5)]"></div>
+                 <div className="h-1.5 w-1/2 bg-[#00ff41]/50 rounded-none"></div>
+             </div>
+         </div>
+       )}
     </div>
   );
 };
@@ -620,6 +731,7 @@ export const Badge = (props: BadgeProps) => {
     case 'creative': return <CreativeBadge {...props} />;
     case 'formal-red': return <FormalRedBadge {...props} />;
     case 'minimalism': return <MinimalismBadge {...props} />;
+    case 'matrix': return <MatrixBadge {...props} uniqueId={props.uniqueId || 'matrix'} />;
     default: return <IndustrialBadge {...props} uniqueId={props.uniqueId || 'default'} />;
   }
 };
