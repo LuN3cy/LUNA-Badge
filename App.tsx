@@ -3,7 +3,7 @@ import { Badge, BadgePreview, LogoRenderer } from './components/Badge';
 import { CircularColorPicker } from './components/CircularColorPicker';
 import { BadgeData, BadgeTheme, Language, INITIAL_BADGE_DATA } from './types';
 import { generatePersona } from './services/geminiService';
-import { Sparkles, RefreshCw, Box, Palette, Languages, Settings2, Image, PanelLeftClose, PanelLeftOpen, Copy, Check, MessageCircle, X, Upload, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, RefreshCw, Box, Palette, Languages, Settings2, Image, PanelLeftClose, PanelLeftOpen, Copy, Check, MessageCircle, X, Upload, Trash2, ChevronDown, ChevronUp, ChevronRight, Tv, ExternalLink, Heart, MessageSquare, QrCode } from 'lucide-react';
 import { Lanyard } from './components/Lanyard';
 import { toPng } from 'html-to-image';
 import download from 'downloadjs';
@@ -30,7 +30,8 @@ const UI_TRANSLATIONS = {
     generate: { en: 'Generate Identity', zh: '生成身份' },
     generating: { en: 'Fabricating Identity...', zh: '正在伪造身份...' },
     reroll: { en: 'Reroll Physics', zh: '重置物理动画' },
-    exportPng: { en: 'Export PNG Card', zh: '导出 PNG 卡片' },
+    exportPng: { en: 'Export Info Card', zh: '导出展示图卡片' },
+    exportCardPng: { en: 'Export Badge Only (PNG)', zh: '仅导出工牌' },
     copyClipboard: { en: 'Copy to Clipboard', zh: '复制到剪切板' },
     copied: { en: 'Copied!', zh: '已复制!' },
     contactAuthor: { en: 'Contact Author', zh: '联系作者' },
@@ -38,6 +39,14 @@ const UI_TRANSLATIONS = {
     removeLogo: { en: 'Remove Logo', zh: '移除 LOGO' },
   },
   styleCustomization: { en: 'Style Customization', zh: '样式自定义' },
+  qrControl: {
+    label: { en: 'QR Code', zh: '二维码显示' },
+    info: { en: 'Generates from card info', zh: '根据卡片信息自动生成' },
+    customContent: { en: 'Custom Content', zh: '自定义内容' },
+    useCustom: { en: 'Use Custom Content', zh: '使用自定义内容' },
+    showQr: { en: 'Show QR Code', zh: '显示二维码' },
+    placeholder: { en: 'Enter custom QR content...', zh: '输入自定义二维码内容...' },
+  },
   logoSection: { en: 'Logo Customization', zh: 'Logo 设置' },
   logoControls: {
       title: { en: 'Logo Editor', zh: 'Logo 编辑器' },
@@ -50,6 +59,10 @@ const UI_TRANSLATIONS = {
       overlay: { en: 'Color Overlay', zh: '颜色叠加' },
       blendMode: { en: 'Color Blend', zh: '色彩模式' },
       selectColor: { en: 'Select Color', zh: '选择颜色' }
+  },
+  shapeControls: {
+      title: { en: 'Shape Customization', zh: '外形设置' },
+      cornerRadius: { en: 'Corner Radius', zh: '圆角程度' },
   },
   themes: {
     industrial: { en: 'Industrial', zh: '工业风' },
@@ -107,8 +120,23 @@ const App = () => {
   
   const animationTimeoutRef = useRef<number | null>(null);
   const exportPosterRef = useRef<HTMLDivElement>(null); // For PNG export (Full Poster)
+  const exportCardRef = useRef<HTMLDivElement>(null); // For Card Only export
   const badgeWrapperRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const qrTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [sectionOpen, setSectionOpen] = useState({
+    theme: true,
+    basic: true,
+    qr: true,
+    logo: true,
+    shape: true,
+    style: true
+  });
+
+  const toggleSection = (section: keyof typeof sectionOpen) => {
+    setSectionOpen(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const t = UI_TRANSLATIONS;
 
@@ -150,6 +178,14 @@ const App = () => {
     };
   }, []);
 
+  // Auto-resize QR textarea
+  useEffect(() => {
+    if (qrTextareaRef.current && sectionOpen.qr && data.isCustomQr) {
+        qrTextareaRef.current.style.height = 'auto';
+        qrTextareaRef.current.style.height = (qrTextareaRef.current.scrollHeight + 2) + 'px';
+    }
+  }, [data.qrValue, data.isCustomQr, sectionOpen.qr]);
+
   const generateQRString = (badge: Omit<BadgeData, 'qrValue' | 'customFields'>) => {
     return JSON.stringify({
       NAME: badge.name,
@@ -165,10 +201,31 @@ const App = () => {
     const { name, value } = e.target;
     setData(prev => {
       const updatedData = { ...prev, [name]: value };
-      return {
-        ...updatedData,
-        qrValue: generateQRString(updatedData)
-      };
+      // Only update qrValue if not using custom QR
+      if (!prev.isCustomQr) {
+          updatedData.qrValue = generateQRString(updatedData);
+      }
+      return updatedData;
+    });
+  };
+
+  const handleCustomQrChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setData(prev => ({
+      ...prev,
+      qrValue: value,
+      isCustomQr: true
+    }));
+  };
+
+  const toggleCustomQr = (useCustom: boolean) => {
+    setData(prev => {
+       const newQrValue = useCustom ? prev.qrValue : generateQRString(prev);
+       return {
+           ...prev,
+           isCustomQr: useCustom,
+           qrValue: newQrValue
+       };
     });
   };
 
@@ -243,6 +300,17 @@ const App = () => {
             download(dataUrl, `luna-badge-${data.name.replace(/\s+/g, '-').toLowerCase()}.png`);
         } catch (err) {
             console.error('PNG export failed', err);
+        }
+    }
+  };
+
+  const handleExportCardPng = async () => {
+    if (exportCardRef.current) {
+        try {
+            const dataUrl = await toPng(exportCardRef.current, { pixelRatio: 4 });
+            download(dataUrl, `luna-badge-card-${data.name.replace(/\s+/g, '-').toLowerCase()}.png`);
+        } catch (err) {
+            console.error('Card PNG export failed', err);
         }
     }
   };
@@ -335,10 +403,20 @@ const App = () => {
              <div className="p-8 pb-4 flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                     <div className="w-10 h-10 bg-gradient-to-br from-white to-gray-400 rounded-lg flex items-center justify-center shadow-lg">
+                     <img 
+                        src="sidebar-logo.svg" 
+                        alt="Logo" 
+                        className="w-10 h-10 rounded-lg shadow-lg object-contain bg-white/10"
+                        onError={(e) => {
+                            // Fallback if image fails (e.g. not found) - show placeholder box
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                     />
+                     <div className="hidden w-10 h-10 bg-gradient-to-br from-white to-gray-400 rounded-lg flex items-center justify-center shadow-lg">
                         <Box className="w-6 h-6 text-black" strokeWidth={2.5} />
                      </div>
-                     <h1 className="text-2xl font-black text-white tracking-tighter">{t.title[language]}</h1>
+                     <h1 className="text-l font-black text-white tracking-tighter whitespace-nowrap">{t.title[language]}</h1>
                   </div>
                   <p className="text-xs text-gray-400 font-mono tracking-wide leading-tight">{t.subtitle[language]}</p>
                 </div>
@@ -365,310 +443,441 @@ const App = () => {
              </div>
 
              {/* Scrollable Form Area */}
-             <div className="flex-grow overflow-y-auto px-8 py-2 custom-scrollbar space-y-6">
+             <div className="flex-grow overflow-y-auto px-8 py-2 custom-scrollbar space-y-2">
                 
                 {/* Theme Selector with Previews */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-3 flex items-center gap-2">
-                    <Palette className="w-4 h-4" /> {t.badgeStyle[language]}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {themes.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => { setTheme(t.id); triggerAnimation(); }}
-                        className="group flex flex-col items-center gap-2"
-                      >
-                         <BadgePreview theme={t.id} isActive={theme === t.id} />
-                         <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${theme === t.id ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>
-                           {t.label}
-                         </span>
-                      </button>
-                    ))}
-                  </div>
+                <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                   <button 
+                     onClick={() => toggleSection('theme')}
+                     className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                   >
+                      <div className="flex items-center gap-2">
+                         <Palette className="w-4 h-4 text-purple-400" />
+                         <span className="text-xs font-bold uppercase tracking-widest text-gray-300">{t.badgeStyle[language]}</span>
+                      </div>
+                      {sectionOpen.theme ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                   </button>
+
+                   {sectionOpen.theme && (
+                     <div className="p-4 pt-0 animate-in slide-in-from-top-2 duration-200">
+                        <div className="grid grid-cols-2 gap-3">
+                          {themes.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => { setTheme(t.id); triggerAnimation(); }}
+                              className="group flex flex-col items-center gap-2"
+                            >
+                               <BadgePreview theme={t.id} isActive={theme === t.id} />
+                               <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${theme === t.id ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`}>
+                                 {t.label}
+                               </span>
+                            </button>
+                          ))}
+                        </div>
+                     </div>
+                   )}
                 </div>
 
-                <div className="h-px bg-white/10 w-full"></div>
+                {/* Section 1: Basic Info */}
+                <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                   <button 
+                     onClick={() => toggleSection('basic')}
+                     className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                   >
+                      <div className="flex items-center gap-2">
+                         <MessageSquare className="w-4 h-4 text-purple-400" />
+                         <span className="text-xs font-bold uppercase tracking-widest text-gray-300">Identity Data</span>
+                      </div>
+                      {sectionOpen.basic ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                   </button>
+                   
+                   {sectionOpen.basic && (
+                     <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className="group">
+                          <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.name[language]}</label>
+                          <input 
+                            name="name" 
+                            value={data.name} 
+                            onChange={handleInputChange}
+                            className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
+                            placeholder={t.placeholders.name[language]}
+                          />
+                        </div>
 
-                {/* Form Fields */}
-                <div className="space-y-4">
-                  <div className="group">
-                    <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.name[language]}</label>
-                    <input 
-                      name="name" 
-                      value={data.name} 
-                      onChange={handleInputChange}
-                      className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
-                      placeholder={t.placeholders.name[language]}
-                    />
-                  </div>
+                        <div className="group">
+                          <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.role[language]}</label>
+                          <input 
+                            name="role" 
+                            value={data.role} 
+                            onChange={handleInputChange}
+                            className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
+                            placeholder={t.placeholders.role[language]}
+                          />
+                        </div>
 
-                  <div className="group">
-                    <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.role[language]}</label>
-                    <input 
-                      name="role" 
-                      value={data.role} 
-                      onChange={handleInputChange}
-                      className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
-                      placeholder={t.placeholders.role[language]}
-                    />
-                  </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="group">
+                              <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.id[language]}</label>
+                              <input 
+                                name="id" 
+                                value={data.id} 
+                                onChange={handleInputChange}
+                                className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
+                              />
+                          </div>
+                          <div className="group">
+                              <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.company[language]}</label>
+                              <input 
+                                name="company" 
+                                value={data.company} 
+                                onChange={handleInputChange}
+                                className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
+                              />
+                          </div>
+                        </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="group">
-                        <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.id[language]}</label>
-                        <input 
-                          name="id" 
-                          value={data.id} 
-                          onChange={handleInputChange}
-                          className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
-                        />
-                    </div>
-                    <div className="group">
-                        <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.company[language]}</label>
-                        <input 
-                          name="company" 
-                          value={data.company} 
-                          onChange={handleInputChange}
-                          className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase shadow-inner"
-                        />
-                    </div>
-                  </div>
+                        <div className="group">
+                          <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.contact[language]}</label>
+                          <textarea 
+                            name="contact" 
+                            value={data.contact} 
+                            onChange={handleInputChange}
+                            rows={2}
+                            className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase resize-none shadow-inner"
+                            placeholder={t.placeholders.contact[language]}
+                          />
+                        </div>
 
-                  <div className="group">
-                    <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.contact[language]}</label>
-                    <textarea 
-                      name="contact" 
-                      value={data.contact} 
-                      onChange={handleInputChange}
-                      rows={2}
-                      className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase resize-none shadow-inner"
-                      placeholder={t.placeholders.contact[language]}
-                    />
-                  </div>
+                        <div className="group">
+                          <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.address[language]}</label>
+                          <textarea 
+                            name="address" 
+                            value={data.address} 
+                            onChange={handleInputChange}
+                            rows={2}
+                            className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase resize-none shadow-inner"
+                            placeholder={t.placeholders.address[language]}
+                          />
+                        </div>
+                     </div>
+                   )}
+                </div>
 
-                  <div className="group">
-                    <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">{t.labels.address[language]}</label>
-                    <textarea 
-                      name="address" 
-                      value={data.address} 
-                      onChange={handleInputChange}
-                      rows={2}
-                      className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all uppercase resize-none shadow-inner"
-                      placeholder={t.placeholders.address[language]}
-                    />
-                  </div>
-                  
-                  {/* Logo Upload Section */}
-                  <div className="h-px bg-white/10 w-full mt-4 mb-4"></div>
-                  <div className="space-y-4">
-                    <label className="block text-xs font-bold uppercase tracking-[0.2em] text-purple-400 mb-1 flex items-center gap-2">
-                        <Image className="w-3.5 h-3.5" />
-                        {t.logoSection[language]}
-                    </label>
-                    <div className="flex items-center gap-4">
-                        <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 h-12 bg-black/20 border border-white/10 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-black/40 hover:border-purple-500/50 transition-all group"
-                        >
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                onChange={handleLogoUpload} 
-                                accept="image/png, image/jpeg, image/svg+xml" 
-                                className="hidden" 
-                            />
-                            <div className="flex items-center gap-2 text-gray-500 group-hover:text-purple-400">
-                                <Upload className="w-4 h-4" />
-                                <span className="text-xs font-bold uppercase tracking-wider">{t.buttons.uploadLogo[language]}</span>
+                {/* Section 2: QR Code */}
+                <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                    <button 
+                        onClick={() => toggleSection('qr')}
+                        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <QrCode className="w-4 h-4 text-purple-400" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-300">{t.qrControl.label[language]}</span>
+                        </div>
+                        {sectionOpen.qr ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                    </button>
+
+                    {sectionOpen.qr && (
+                        <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                            {/* Enable/Disable Toggle */}
+                            <div className="flex items-center justify-between p-2 bg-black/20 rounded-lg">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">{t.qrControl.showQr[language]}</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={data.qrEnabled}
+                                        onChange={(e) => setData(prev => ({ ...prev, qrEnabled: e.target.checked }))}
+                                    />
+                                    <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+
+                            {/* Custom Content Toggle */}
+                            <div className="flex items-center justify-between p-2 bg-black/20 rounded-lg">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">{t.qrControl.useCustom[language]}</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={data.isCustomQr}
+                                        onChange={(e) => toggleCustomQr(e.target.checked)}
+                                    />
+                                    <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+
+                            {/* Custom Content Input or Read-only Display */}
+                            <div className="space-y-2 pt-1">
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1">
+                                    {data.isCustomQr ? t.qrControl.customContent[language] : 'Auto-Generated Content'}
+                                </label>
+                                {data.isCustomQr ? (
+                                    <textarea
+                                        ref={qrTextareaRef}
+                                        value={data.qrValue}
+                                        onChange={handleCustomQrChange}
+                                        rows={1}
+                                        className="w-full bg-black/20 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-gray-700 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 transition-all resize-none overflow-hidden"
+                                        placeholder={t.qrControl.placeholder[language]}
+                                        style={{ minHeight: '60px' }}
+                                    />
+                                ) : (
+                                    <div className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-mono text-gray-500 break-all whitespace-pre-wrap h-auto max-h-24 overflow-y-auto custom-scrollbar">
+                                        {data.qrValue}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        {data.logo && (
-                            <button 
-                                onClick={handleRemoveLogo}
-                                className="h-12 w-12 flex items-center justify-center bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 text-red-400 transition-all"
-                                title={t.buttons.removeLogo[language]}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-                    
-                    {/* Collapsible Logo Editor */}
-                    {data.logo && (
-                        <div className="w-full bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                            <button 
-                                onClick={() => setIsLogoSettingsOpen(!isLogoSettingsOpen)}
-                                className="w-full p-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
-                            >
-                                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                                    <Settings2 className="w-3.5 h-3.5" />
-                                    {t.logoControls.title[language]}
-                                </span>
-                                {isLogoSettingsOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                            </button>
-                            
-                            {isLogoSettingsOpen && (
-                                <div className="p-4 space-y-4 border-t border-white/5">
-                                    <div className="flex justify-center p-2 bg-black/40 rounded border border-white/5 mb-2">
-                                        <div className="relative">
-                                            <LogoRenderer
-                                                src={data.logo}
-                                                settings={data.logoSettings}
-                                                className="max-h-16 object-contain transition-all"
-                                            />
-                                        </div>
+                    )}
+                </div>
+
+                {/* Section 3: Logo */}
+                <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                   <button 
+                        onClick={() => toggleSection('logo')}
+                        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Image className="w-4 h-4 text-purple-400" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-300">{t.logoSection[language]}</span>
+                        </div>
+                        {sectionOpen.logo ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                    </button>
+                    {sectionOpen.logo && (
+                        <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                           <div className="flex items-center gap-4">
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex-1 h-12 bg-black/20 border border-white/10 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-black/40 hover:border-purple-500/50 transition-all group"
+                                >
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleLogoUpload} 
+                                        accept="image/png, image/jpeg, image/svg+xml" 
+                                        className="hidden" 
+                                    />
+                                    <div className="flex items-center gap-2 text-gray-500 group-hover:text-purple-400">
+                                        <Upload className="w-4 h-4" />
+                                        <span className="text-xs font-bold uppercase tracking-wider">{t.buttons.uploadLogo[language]}</span>
                                     </div>
-
-                                    {/* Logo Editor Controls */}
-                                    <div className="space-y-3">
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.scale[language]}</label>
-                                                <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.scale}%</span>
+                                </div>
+                                {data.logo && (
+                                    <button 
+                                        onClick={handleRemoveLogo}
+                                        className="h-12 w-12 flex items-center justify-center bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 text-red-400 transition-all"
+                                        title={t.buttons.removeLogo[language]}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {/* Logo Settings - Merged into this section */}
+                            {data.logo && (
+                                <div className="w-full bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                                    <div className="p-3 border-b border-white/5">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                                            <Settings2 className="w-3.5 h-3.5" />
+                                            {t.logoControls.title[language]}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="p-4 space-y-4">
+                                        <div className="flex justify-center p-2 bg-black/40 rounded border border-white/5 mb-2">
+                                            <div className="relative">
+                                                <LogoRenderer
+                                                    src={data.logo}
+                                                    settings={data.logoSettings}
+                                                    className="max-h-16 object-contain transition-all"
+                                                />
                                             </div>
-                                            <input 
-                                                type="range" min="50" max="150" 
-                                                value={data.logoSettings.scale} 
-                                                onChange={(e) => handleLogoSettingChange('scale', Number(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                            />
-                                        </div>
-                                        
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.opacity[language]}</label>
-                                                <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.opacity}%</span>
-                                            </div>
-                                            <input 
-                                                type="range" min="0" max="100" 
-                                                value={data.logoSettings.opacity} 
-                                                onChange={(e) => handleLogoSettingChange('opacity', Number(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.contrast[language]}</label>
-                                                <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.contrast}%</span>
-                                            </div>
-                                            <input 
-                                                type="range" min="0" max="200" 
-                                                value={data.logoSettings.contrast} 
-                                                onChange={(e) => handleLogoSettingChange('contrast', Number(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                            />
                                         </div>
 
-                                        <div className="flex gap-2 pt-2">
-                                            <button 
-                                                onClick={() => handleLogoSettingChange('grayscale', !data.logoSettings.grayscale)}
-                                                className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border transition-all ${data.logoSettings.grayscale ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
-                                            >
-                                                {t.logoControls.grayscale[language]}
-                                            </button>
-                                            <button 
-                                                onClick={() => handleLogoSettingChange('invert', !data.logoSettings.invert)}
-                                                className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border transition-all ${data.logoSettings.invert ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
-                                            >
-                                                {t.logoControls.invert[language]}
-                                            </button>
-                                        </div>
-
-                                        {/* Color Overlay Control */}
-                                        <div className="pt-2">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.overlay[language]}</label>
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="sr-only peer" 
-                                                        checked={data.logoSettings.overlayEnabled}
-                                                        onChange={(e) => handleLogoSettingChange('overlayEnabled', e.target.checked)}
-                                                    />
-                                                    <div className="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
-                                                </label>
-                                            </div>
-                                            {data.logoSettings.overlayEnabled && (
-                                                <div className="relative">
-                                                    <button
-                                                        ref={colorButtonRef}
-                                                        onClick={() => {
-                                                            if (colorButtonRef.current) {
-                                                                const rect = colorButtonRef.current.getBoundingClientRect();
-                                                                // Position slightly to the right of the button if sidebar is on left, or just below if fits
-                                                                // Sidebar is width 340px. 
-                                                                // Let's position it to the right of the button: left = rect.right + 10
-                                                                // And align top: top = rect.top
-                                                                setPickerPosition({ top: rect.top, left: rect.right + 16 });
-                                                            }
-                                                            setIsColorPickerOpen(!isColorPickerOpen);
-                                                        }}
-                                                        className="w-full h-10 rounded-lg border border-white/10 flex items-center justify-between px-3 hover:border-white/30 transition-all group"
-                                                        style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                             <div 
-                                                                className="w-6 h-6 rounded-full border border-white/20 shadow-sm"
-                                                                style={{ backgroundColor: data.logoSettings.overlayColor }}
-                                                             ></div>
-                                                             <span className="text-xs font-mono text-gray-300 group-hover:text-white uppercase">
-                                                                {data.logoSettings.overlayColor}
-                                                             </span>
-                                                        </div>
-                                                        <Palette className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
-                                                    </button>
+                                        {/* Logo Editor Controls */}
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="flex justify-between mb-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.scale[language]}</label>
+                                                    <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.scale}%</span>
                                                 </div>
-                                            )}
-                                        </div>
+                                                <input 
+                                                    type="range" min="50" max="150" 
+                                                    value={data.logoSettings.scale} 
+                                                    onChange={(e) => handleLogoSettingChange('scale', Number(e.target.value))}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                                />
+                                            </div>
+                                            
+                                            <div>
+                                                <div className="flex justify-between mb-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.opacity[language]}</label>
+                                                    <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.opacity}%</span>
+                                                </div>
+                                                <input 
+                                                    type="range" min="0" max="100" 
+                                                    value={data.logoSettings.opacity} 
+                                                    onChange={(e) => handleLogoSettingChange('opacity', Number(e.target.value))}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                                />
+                                            </div>
 
-                                        <button 
-                                            onClick={() => {
-                                                // Simplify preset: High contrast, B&W
-                                                handleLogoSettingChange('grayscale', true);
-                                                handleLogoSettingChange('contrast', 150);
-                                                handleLogoSettingChange('brightness', 110);
-                                                handleLogoSettingChange('invert', false);
-                                            }}
-                                            className="w-full py-2 rounded text-[10px] font-bold uppercase border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Sparkles className="w-3 h-3" />
-                                            {t.logoControls.simplify[language]}
-                                        </button>
+                                            <div>
+                                                <div className="flex justify-between mb-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.contrast[language]}</label>
+                                                    <span className="text-[10px] font-mono text-gray-400">{data.logoSettings.contrast}%</span>
+                                                </div>
+                                                <input 
+                                                    type="range" min="0" max="200" 
+                                                    value={data.logoSettings.contrast} 
+                                                    onChange={(e) => handleLogoSettingChange('contrast', Number(e.target.value))}
+                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                                />
+                                            </div>
+
+                                            <div className="flex gap-2 pt-2">
+                                                <button 
+                                                    onClick={() => handleLogoSettingChange('grayscale', !data.logoSettings.grayscale)}
+                                                    className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border transition-all ${data.logoSettings.grayscale ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
+                                                >
+                                                    {t.logoControls.grayscale[language]}
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleLogoSettingChange('invert', !data.logoSettings.invert)}
+                                                    className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border transition-all ${data.logoSettings.invert ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
+                                                >
+                                                    {t.logoControls.invert[language]}
+                                                </button>
+                                            </div>
+
+                                            {/* Color Overlay Control */}
+                                            <div className="pt-2">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">{t.logoControls.overlay[language]}</label>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="sr-only peer" 
+                                                            checked={data.logoSettings.overlayEnabled}
+                                                            onChange={(e) => handleLogoSettingChange('overlayEnabled', e.target.checked)}
+                                                        />
+                                                        <div className="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                                                    </label>
+                                                </div>
+                                                {data.logoSettings.overlayEnabled && (
+                                                    <div className="relative">
+                                                        <button
+                                                            ref={colorButtonRef}
+                                                            onClick={() => {
+                                                                if (colorButtonRef.current) {
+                                                                    const rect = colorButtonRef.current.getBoundingClientRect();
+                                                                    setPickerPosition({ top: rect.top, left: rect.right + 16 });
+                                                                }
+                                                                setIsColorPickerOpen(!isColorPickerOpen);
+                                                            }}
+                                                            className="w-full h-10 rounded-lg border border-white/10 flex items-center justify-between px-3 hover:border-white/30 transition-all group"
+                                                            style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                 <div 
+                                                                    className="w-6 h-6 rounded-full border border-white/20 shadow-sm"
+                                                                    style={{ backgroundColor: data.logoSettings.overlayColor }}
+                                                                 ></div>
+                                                                 <span className="text-xs font-mono text-gray-300 group-hover:text-white uppercase">
+                                                                    {data.logoSettings.overlayColor}
+                                                                 </span>
+                                                            </div>
+                                                            <Palette className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <button 
+                                                onClick={() => {
+                                                    // Simplify preset: High contrast, B&W
+                                                    handleLogoSettingChange('grayscale', true);
+                                                    handleLogoSettingChange('contrast', 150);
+                                                    handleLogoSettingChange('brightness', 110);
+                                                    handleLogoSettingChange('invert', false);
+                                                }}
+                                                className="w-full py-2 rounded text-[10px] font-bold uppercase border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                {t.logoControls.simplify[language]}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
-                  </div>
-
-                  {/* Style Customization Section */}
-                  {currentThemeFields.length > 0 && (
-                    <>
-                      <div className="h-px bg-white/10 w-full mt-4 mb-4"></div>
-                      <div className="space-y-4">
-                        <label className="block text-xs font-bold uppercase tracking-[0.2em] text-purple-400 mb-1 flex items-center gap-2">
-                           <Settings2 className="w-3.5 h-3.5" />
-                           {t.styleCustomization[language]}
-                        </label>
-                        {currentThemeFields.map((field) => (
-                          <div className="group" key={field.key}>
-                             <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">
-                               {field.label[language]}
-                             </label>
-                             <input 
-                                value={data.customFields[field.key] || ''}
-                                onChange={(e) => handleCustomFieldChange(field.key, e.target.value)}
-                                className="w-full bg-purple-900/10 border border-purple-500/20 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-600 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all shadow-inner"
-                                placeholder="DEFAULT"
-                             />
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
                 </div>
+                
+                {/* Section 4: Shape */}
+                 <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                   <button 
+                        onClick={() => toggleSection('shape')}
+                        className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Settings2 className="w-4 h-4 text-purple-400" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-300">{t.shapeControls.title[language]}</span>
+                        </div>
+                        {sectionOpen.shape ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                    </button>
+                    {sectionOpen.shape && (
+                        <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                           <div className="group">
+                              <div className="flex justify-between mb-2">
+                                  <label className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 group-focus-within:text-purple-400 transition-colors">
+                                      {t.shapeControls.cornerRadius[language]}
+                                  </label>
+                                  <span className="text-xs font-mono text-gray-400">{data.cornerRadius}px</span>
+                              </div>
+                              <input 
+                                  type="range" min="0" max="60" 
+                                  value={data.cornerRadius} 
+                                  onChange={(e) => setData(prev => ({ ...prev, cornerRadius: Number(e.target.value) }))}
+                                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                              />
+                          </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Section 5: Style */}
+                {currentThemeFields.length > 0 && (
+                    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/5">
+                        <button 
+                            onClick={() => toggleSection('style')}
+                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Settings2 className="w-4 h-4 text-purple-400" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-300">{t.styleCustomization[language]}</span>
+                            </div>
+                            {sectionOpen.style ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                        </button>
+                        {sectionOpen.style && (
+                            <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                {currentThemeFields.map((field) => (
+                                  <div className="group" key={field.key}>
+                                     <label className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-2 group-focus-within:text-purple-400 transition-colors">
+                                       {field.label[language]}
+                                     </label>
+                                     <input 
+                                        value={data.customFields[field.key] || ''}
+                                        onChange={(e) => handleCustomFieldChange(field.key, e.target.value)}
+                                        className="w-full bg-purple-900/10 border border-purple-500/20 rounded-lg px-4 py-3 text-base font-mono text-white placeholder-gray-600 focus:outline-none focus:bg-black/40 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all shadow-inner"
+                                        placeholder="DEFAULT"
+                                     />
+                                  </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
              </div>
 
              {/* Footer Actions */}
@@ -700,6 +909,16 @@ const App = () => {
                     >
                       {copyStatus === 'success' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       {copyStatus === 'success' ? t.buttons.copied[language] : t.buttons.copyClipboard[language]}
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={handleExportCardPng}
+                      className="col-span-2 w-full py-3 bg-green-600/20 text-green-200 border border-green-500/30 rounded-lg font-bold text-[10px] uppercase tracking-wider hover:bg-green-600/40 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Image className="w-3.5 h-3.5" />
+                      {t.buttons.exportCardPng[language]}
                     </button>
                 </div>
 
@@ -738,9 +957,45 @@ const App = () => {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="space-y-3 text-gray-300">
-                  <p className="text-sm leading-relaxed">公众号&小红书：@LuN3cy的实验房</p>
-                  <p className="text-sm leading-relaxed">B站：LuN3cy</p>
+                <div className="flex flex-col gap-3">
+                  <a href="https://mp.weixin.qq.com/s/MD5T-BsAgUi9yUo6ISY1CA" target="_blank" rel="noopener noreferrer" 
+                    className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-[#07c160]/20 hover:border-[#07c160]/50 hover:scale-[1.02] transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#07c160]/20 flex items-center justify-center group-hover:bg-[#07c160] transition-colors">
+                      <MessageSquare className="w-5 h-5 text-[#07c160] group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-200 group-hover:text-white">公众号：@LuN3cy的实验房</span>
+                      <span className="text-xs text-gray-500 group-hover:text-gray-300">点击查看最新文章</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-white/50 ml-auto" />
+                  </a>
+
+                  <a href="https://www.xiaohongshu.com/user/profile/61bbb882000000001000e80d" target="_blank" rel="noopener noreferrer" 
+                    className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-[#ff2442]/20 hover:border-[#ff2442]/50 hover:scale-[1.02] transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#ff2442]/20 flex items-center justify-center group-hover:bg-[#ff2442] transition-colors">
+                      <Heart className="w-5 h-5 text-[#ff2442] group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-200 group-hover:text-white">小红书：@LuN3cy</span>
+                      <span className="text-xs text-gray-500 group-hover:text-gray-300">关注我的设计日常</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-white/50 ml-auto" />
+                  </a>
+
+                  <a href="https://b23.tv/XNNX02Q" target="_blank" rel="noopener noreferrer" 
+                    className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-[#00aeec]/20 hover:border-[#00aeec]/50 hover:scale-[1.02] transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#00aeec]/20 flex items-center justify-center group-hover:bg-[#00aeec] transition-colors">
+                      <Tv className="w-5 h-5 text-[#00aeec] group-hover:text-white transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-200 group-hover:text-white">Bilibili：@LuN3cy</span>
+                      <span className="text-xs text-gray-500 group-hover:text-gray-300">观看更多视频和作品</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-white/50 ml-auto" />
+                  </a>
                 </div>
               </div>
             </div>
@@ -806,7 +1061,7 @@ const App = () => {
                {/* BADGE LAYER */}
                <div 
                  ref={badgeWrapperRef}
-                 className="relative mt-[40vh] transition-transform duration-200 ease-out will-change-transform" 
+                 className="relative mt-[40vh] h-[540px] transition-transform duration-200 ease-out will-change-transform" 
                  style={{ 
                     transform: `translateY(-24px) translateZ(10px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
                     transformStyle: 'preserve-3d'
@@ -845,6 +1100,11 @@ const App = () => {
                     <span className="text-sm font-mono text-gray-500 uppercase tracking-widest">Designed by You</span>
                 </div>
              </div>
+          </div>
+
+          {/* Card Only Export: Standard Res container, Scaled up via pixelRatio */}
+          <div ref={exportCardRef} className="w-[340px] h-[540px] bg-transparent relative flex items-center justify-center">
+              <Badge data={data} theme={theme} language={language} uniqueId="card-export" />
           </div>
       </div>
 

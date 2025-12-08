@@ -134,12 +134,12 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
   const t = BADGE_TRANSLATIONS.industrial;
   const exportMode = uniqueId.includes('export');
   return (
-    <div className="relative w-full h-full bg-[#0a0a0a] text-gray-200 font-mono flex flex-col justify-between p-8">
+    <div className="relative w-full h-full bg-[#0a0a0a] text-gray-200 font-mono flex flex-col justify-between p-8 overflow-hidden" style={{ borderRadius: data.cornerRadius + 'px' }}>
         <NoiseTexture id={`noise-${uniqueId}`} />
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/60 pointer-events-none z-20 mix-blend-overlay"></div>
         
         <div className="relative z-10 flex flex-col h-full">
-          <div className="mt-8 mb-6 flex justify-between items-start min-h-[48px]">
+          <div className="mt-8 mb-4 flex justify-between items-start min-h-[48px] shrink-0">
             {data.logo && (
                 <LogoRenderer
                     src={data.logo}
@@ -148,35 +148,36 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
                 />
             )}
           </div>
-          <div className="flex-1 min-h-0">
-          <div className="space-y-2 mb-4">
-            <h2 className={`${getAdaptiveSize(data.role, 'text-4xl', 'text-2xl', 'text-xl', 10, 20)} font-bold ${exportMode ? 'tracking-wide' : 'tracking-[0.2em]'} text-gray-100 uppercase drop-shadow-md break-words line-clamp-2`}>{data.role}</h2>
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent my-4"></div>
-          </div>
-  
-          <div className="grid grid-cols-2 gap-4 text-xs tracking-widest text-gray-400 font-bold uppercase mb-4">
-            <div>
-              <span className="block mb-1 text-[11px] text-gray-600">{t.address[lang]}</span>
-              <p className="whitespace-pre-line leading-relaxed text-gray-300 text-xs line-clamp-3">{data.address}</p>
+          
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="mb-6 shrink-0">
+              <span className="text-[11px] text-gray-500 block mb-1">
+                {data.customFields['industrial_identifier'] || t.identifier[lang]}
+              </span>
+              <h1 className={`${getAdaptiveSize(data.name, 'text-4xl', 'text-3xl', 'text-2xl', 8, 16)} font-mono text-white ${exportMode ? 'tracking-wide' : 'tracking-widest'} uppercase break-words leading-tight`}>{data.name}</h1>
             </div>
-            <div>
-              <span className="block mb-1 text-[11px] text-gray-600">{t.contact[lang]}</span>
-              <p className="whitespace-pre-line leading-relaxed text-gray-300 text-cyan-500/80 text-xs line-clamp-3">{data.contact}</p>
+
+            <div className="space-y-2 mb-4 shrink-0">
+              <h2 className={`${getAdaptiveSize(data.role, 'text-2xl', 'text-xl', 'text-lg', 10, 20)} font-bold ${exportMode ? 'tracking-wide' : 'tracking-[0.2em]'} text-gray-400 uppercase drop-shadow-md break-words line-clamp-2`}>{data.role}</h2>
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent my-4"></div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs tracking-widest text-gray-400 font-bold uppercase mb-4 shrink-0">
+              <div>
+                <span className="block mb-1 text-[11px] text-gray-600">{t.address[lang]}</span>
+                <p className="whitespace-pre-line leading-relaxed text-gray-300 text-xs line-clamp-3">{data.address}</p>
+              </div>
+              <div>
+                <span className="block mb-1 text-[11px] text-gray-600">{t.contact[lang]}</span>
+                <p className="whitespace-pre-line leading-relaxed text-gray-300 text-cyan-500/80 text-xs line-clamp-3">{data.contact}</p>
+              </div>
+            </div>
+
+            <div className="w-full h-px bg-white/10 mb-4 shrink-0 mt-auto"></div>
           </div>
-  
-          <div className="w-full h-px bg-white/10 mb-4"></div>
-  
-          <div className="mb-auto">
-            <span className="text-[11px] text-gray-500 block mb-1">
-              {data.customFields['industrial_identifier'] || t.identifier[lang]}
-            </span>
-            <h1 className={`${getAdaptiveSize(data.name, 'text-4xl', 'text-3xl', 'text-2xl', 6, 12)} font-mono text-white ${exportMode ? 'tracking-wide' : 'tracking-widest'} uppercase break-words line-clamp-2`}>{data.name}</h1>
-          </div>
-          </div>
-  
-          <div className="flex items-end justify-between mt-4 mb-2">
-            <div className="p-1.5 rounded-sm">
+
+          <div className="flex items-end justify-between mt-4 mb-2 shrink-0">
+            <div className={`p-1.5 rounded-sm ${!data.qrEnabled ? 'opacity-0' : ''}`}>
                <QRCodeSVG value={data.qrValue} size={72} level="M" bgColor="transparent" fgColor="#FFFFFF" />
             </div>
             <div className="flex flex-col items-end text-right">
@@ -200,7 +201,7 @@ const IndustrialBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Lang
 const ModernBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
   const t = BADGE_TRANSLATIONS.modern;
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-blue-950 via-blue-900 to-slate-900 text-white font-sans overflow-hidden flex flex-col">
+    <div className="relative w-full h-full bg-gradient-to-br from-blue-950 via-blue-900 to-slate-900 text-white font-sans overflow-hidden flex flex-col" style={{ borderRadius: data.cornerRadius + 'px' }}>
        <div className="absolute inset-0 opacity-40 mix-blend-color-dodge">
           <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.5),transparent_70%)] blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-full h-full bg-[linear-gradient(45deg,transparent_40%,rgba(147,197,253,0.1)_45%,transparent_50%)]"></div>
@@ -254,7 +255,7 @@ const ModernBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
                 </div>
              </div>
   
-             <div className="bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 shadow-lg shrink-0">
+             <div className={`bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/20 shadow-lg shrink-0 ${!data.qrEnabled ? 'opacity-0' : ''}`}>
                  <QRCodeSVG value={data.qrValue} size={64} fgColor="#FFFFFF" bgColor="transparent" />
              </div>
           </div>
@@ -267,7 +268,7 @@ const ModernBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
 const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language, uniqueId: string }) => {
   const t = BADGE_TRANSLATIONS.swiss;
   return (
-    <div className="relative w-full h-full bg-[#3b82f6] text-white font-sans flex flex-col items-center justify-center p-6 pb-0 overflow-hidden">
+    <div className="relative w-full h-full bg-[#3b82f6] text-white font-sans flex flex-col items-center justify-center p-6 pb-0 overflow-hidden" style={{ borderRadius: data.cornerRadius + 'px' }}>
        <div className="absolute inset-0 opacity-10 mix-blend-multiply pointer-events-none">
          <NoiseTexture id={`noise-${uniqueId}`} />
        </div>
@@ -342,7 +343,7 @@ const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language,
                     <span className="text-2xl font-black tracking-tight uppercase leading-none block">{data.company}</span>
                  </div>
                  <div className="shrink-0">
-                    <QRCodeSVG value={data.qrValue} size={48} fgColor="#2563eb" bgColor="transparent" />
+                    {data.qrEnabled && <QRCodeSVG value={data.qrValue} size={48} fgColor="#2563eb" bgColor="transparent" />}
                  </div>
               </div>
           </div>
@@ -354,19 +355,19 @@ const SwissBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language,
 const CreativeBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
   const t = BADGE_TRANSLATIONS.creative;
   return (
-    <div className="relative w-full h-full bg-white text-gray-900 font-sans flex flex-col p-8 overflow-hidden">
+    <div className="relative w-full h-full bg-white text-gray-900 font-sans flex flex-col p-8 overflow-hidden" style={{ borderRadius: data.cornerRadius + 'px' }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] -rotate-12 opacity-90 pointer-events-none mix-blend-multiply blur-xl">
            <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-yellow-300 to-pink-400 rounded-full opacity-80"></div>
         </div>
         
         <div className="relative z-10 flex flex-col h-full">
            {data.logo && (
-               <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center overflow-hidden border border-white/20 shadow-sm transition-all">
+               <div className="absolute top-0 right-0 w-20 h-20 flex items-center justify-center p-2">
                    <LogoRenderer
                         src={data.logo}
                         settings={data.logoSettings}
                         extraScale={1.1}
-                        className="w-full h-full object-contain p-2"
+                        className="w-full h-full object-contain"
                    />
                </div>
            )}
@@ -405,7 +406,7 @@ const CreativeBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
 
        <div className="mt-auto bg-indigo-50 rounded-xl p-4 flex items-center justify-between shadow-sm border border-indigo-100">
           <div className="flex items-center gap-3">
-             <QRCodeSVG value={data.qrValue} size={40} fgColor="#312e81" bgColor="transparent" />
+             {data.qrEnabled && <QRCodeSVG value={data.qrValue} size={40} fgColor="#312e81" bgColor="transparent" />}
              <div className="flex flex-col text-xs leading-tight font-mono text-gray-500">
                 <span className="block uppercase">ID: {data.id}</span>
                 <span className="block">
@@ -425,7 +426,7 @@ const CreativeBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
 const FormalRedBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
   const t = BADGE_TRANSLATIONS.formalRed;
   return (
-    <div className="relative w-full h-full bg-[#fcfcfc] text-gray-800 font-sans overflow-hidden flex flex-col shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]">
+    <div className="relative w-full h-full bg-[#fcfcfc] text-gray-800 font-sans overflow-hidden flex flex-col shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]" style={{ borderRadius: data.cornerRadius + 'px' }}>
        <div className="absolute top-0 left-0 w-full h-[32%] overflow-hidden z-0 bg-[#cbb084]">
           <div className="absolute top-0 right-0 w-[80%] h-[120%] bg-[#b93632] rounded-bl-[100%] z-10 shadow-lg"></div>
           <div className="absolute top-[-10%] left-[10%] w-[120%] h-[120%] border border-[#a6302c] rounded-full z-20 opacity-30 pointer-events-none"></div>
@@ -487,7 +488,7 @@ const FormalRedBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => 
                  <span className="block text-[11px] text-gray-400 uppercase tracking-[0.2em] mb-1 pl-0.5">{t.designation[lang]}</span>
                  <h2 className={`${getAdaptiveSize(data.role, 'text-4xl', 'text-2xl', 'text-xl', 10, 20)} font-black text-[#cbb084] uppercase tracking-tighter leading-none break-words line-clamp-2`}>{data.role}</h2>
              </div>
-             <div className="bg-white p-1 rounded border border-gray-100 shadow-sm shrink-0">
+             <div className={`bg-white p-1 rounded border border-gray-100 shadow-sm shrink-0 ${!data.qrEnabled ? 'opacity-0' : ''}`}>
                  <QRCodeSVG value={data.qrValue} size={52} fgColor="#b93632" bgColor="#ffffff" />
              </div>
           </div>
@@ -500,7 +501,7 @@ const FormalRedBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => 
 const MinimalismBadge = ({ data, lang }: { data: BadgeData, lang: Language }) => {
   const t = BADGE_TRANSLATIONS.minimalism;
   return (
-    <div className="relative w-full h-full bg-white text-gray-900 font-sans flex flex-col p-8">
+    <div className="relative w-full h-full bg-white text-gray-900 font-sans flex flex-col p-8 overflow-hidden" style={{ borderRadius: data.cornerRadius + 'px' }}>
        {/* Top Bar */}
        <div className="flex justify-between items-start mb-8">
           <div className="flex flex-col">
@@ -542,7 +543,7 @@ const MinimalismBadge = ({ data, lang }: { data: BadgeData, lang: Language }) =>
                    <span className="block text-[10px] uppercase font-bold text-gray-400 mb-0.5">ID</span>
                    <span className="font-mono text-sm">{data.id}</span>
                </div>
-               <div className="p-1 border border-gray-100 rounded">
+               <div className={`p-1 border border-gray-100 rounded ${!data.qrEnabled ? 'opacity-0' : ''}`}>
                    <QRCodeSVG value={data.qrValue} size={56} fgColor="#111" bgColor="transparent" />
                </div>
            </div>
@@ -555,7 +556,7 @@ const MatrixBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language
   const t = BADGE_TRANSLATIONS.matrix;
   
   return (
-    <div className="relative w-full h-full bg-black text-[#00ff41] font-matrix overflow-hidden flex flex-col p-6">
+    <div className="relative w-full h-full bg-black text-[#00ff41] font-matrix overflow-hidden flex flex-col p-6" style={{ borderRadius: data.cornerRadius + 'px' }}>
        {/* Digital Rain Background Effect (Simplified with CSS gradients/opacity) */}
        <div className="absolute inset-0 pointer-events-none opacity-20">
           <div className="w-full h-full" style={{ 
@@ -622,7 +623,7 @@ const MatrixBadge = ({ data, lang, uniqueId }: { data: BadgeData, lang: Language
            </div>
            
            <div className="flex flex-col items-end gap-2">
-               <div className="bg-black p-2 border border-[#00ff41] shadow-[0_0_15px_rgba(0,255,65,0.2)]">
+               <div className={`bg-black p-2 border border-[#00ff41] shadow-[0_0_15px_rgba(0,255,65,0.2)] ${!data.qrEnabled ? 'opacity-0' : ''}`}>
                    <QRCodeSVG value={data.qrValue} size={80} fgColor="#00ff41" bgColor="#000000" />
                </div>
                <span className="text-[10px] tracking-widest opacity-80 animate-pulse">{t.access[lang]}</span>

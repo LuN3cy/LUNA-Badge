@@ -33,6 +33,9 @@ export interface BadgeData {
   customFields: Record<string, string>;
   logo?: string; // Base64 data URL
   logoSettings: LogoSettings;
+  qrEnabled: boolean;
+  isCustomQr: boolean;
+  cornerRadius: number;
 }
 
 export type BadgeTheme = 'industrial' | 'modern' | 'swiss' | 'creative' | 'formal-red' | 'minimalism' | 'matrix';
@@ -56,5 +59,8 @@ export const INITIAL_BADGE_DATA: BadgeData = {
   }, null, 2),
   customFields: {},
   logo: undefined,
-  logoSettings: DEFAULT_LOGO_SETTINGS
+  logoSettings: DEFAULT_LOGO_SETTINGS,
+  qrEnabled: true,
+  isCustomQr: false,
+  cornerRadius: 24
 };
