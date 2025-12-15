@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="public/sidebar-logo.svg" width="120" alt="LUNA-BADGE Logo" />
   <h1>LUNA-BADGE</h1>
   <p>一个高颜值、可离线使用的设计风工牌生成器</p>
 </div>
